@@ -60,14 +60,12 @@
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
         }
 
-        /* Responsive spacing for inputs in completion */
         .completion-input {
             max-width: 100%;
             min-width: 80px;
             display: inline-block;
         }
 
-        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -159,7 +157,7 @@
             { q: "Which of the following is an advantage of non-ballasted track?", a: "C", options: ["Lower initial cost.", "Easier to lay.", "Longer lifespan.", "Higher noise reduction measures."] },
             { q: "What is the approximate lifespan of ballasted track?", a: "C", options: ["50-60 years.", "30-40 years.", "15-20 years.", "100 years."] },
             { q: "What is the main material used in the bed of a non-ballasted track?", a: "C", options: ["Gravel.", "Wood.", "Concrete.", "Steel."] },
-            { q: "What is a disadvantage of ballasted track?", a: "C", options: ["High initial cost.", "Difficult to lay.", "Frequent maintenance.", "Low speed capability."] },
+            { q: "What is a disadvantage of ballasted track?", a: ["C", "D"], options: ["High initial cost.", "Difficult to lay.", "Frequent maintenance.", "Low speed capability."] },
             { q: "Ballasted track is also known as:", a: "C", options: ["Slab track.", "Ballastless track.", "Ordinary track.", "Concrete track."] },
             { q: "Which track type is more environmentally friendly in terms of dust pollution?", a: "B", options: ["Ballasted track.", "Non-ballasted track.", "Both are equally polluting.", "Neither is polluting."] }
         ];
@@ -189,7 +187,7 @@
             { q: "Ballasted track is ideal for use in earthquake-prone areas.", a: false },
             { q: "The lifespan of non-ballasted track is generally shorter than that of ballasted track.", a: false },
             { q: "Ballast is a key component of non-ballasted track construction.", a: false },
-            { q: "High-speed railways typically utilize ballasted track.", a: true },
+            { q: "High-speed railways typically utilize ballasted track.", a: false },
             { q: "Ballasted track is easier to repair than non-ballasted track.", a: true },
             { q: "Non-ballasted tracks reduce dust and noise pollution compared to ballasted tracks.", a: true }
         ];
@@ -207,9 +205,13 @@
 
         function renderMCQs() {
             const container = document.getElementById('mcq-container');
+            container.innerHTML = '';
             mcqs.forEach((item, idx) => {
                 const qDiv = document.createElement('div');
                 qDiv.className = "glass-card p-5 md:p-8 rounded-2xl";
+                
+                const answerAttr = Array.isArray(item.a) ? JSON.stringify(item.a).replace(/"/g, '&quot;') : `'${item.a}'`;
+                
                 qDiv.innerHTML = `
                     <div class="flex gap-3 mb-5">
                         <span class="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-900/50 text-blue-400 flex items-center justify-center font-bold text-xs md:text-sm border border-blue-500/30">${idx + 1}</span>
@@ -218,7 +220,7 @@
                     <div class="grid gap-2 sm:ml-9">
                         ${item.options.map((opt, oIdx) => {
                             const letter = String.fromCharCode(65 + oIdx);
-                            return `<button onclick="checkMCQ(this, '${letter}', '${item.a}')" class="option-btn text-left p-3 md:p-4 rounded-xl flex items-center gap-3 group">
+                            return `<button onclick="checkMCQ(this, '${letter}', ${answerAttr})" class="option-btn text-left p-3 md:p-4 rounded-xl flex items-center gap-3 group">
                                 <span class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-400 text-xs border border-slate-700">${letter}</span>
                                 <span class="font-medium text-xs md:text-sm text-slate-300 group-hover:text-white">${opt}</span>
                             </button>`;
@@ -231,23 +233,40 @@
 
         window.checkMCQ = function(btn, choice, correct) {
             const parent = btn.parentElement;
-            parent.querySelectorAll('button').forEach(b => b.disabled = true);
-            if (choice === correct) btn.classList.add('correct');
-            else {
+            const isMultiAnswer = Array.isArray(correct);
+            const isCorrect = isMultiAnswer ? correct.includes(choice) : choice === correct;
+            
+            if (isCorrect) {
+                btn.classList.add('correct');
+                btn.disabled = true;
+                
+                if (isMultiAnswer) {
+                    const selectedCorrectCount = parent.querySelectorAll('button.correct').length;
+                    if (selectedCorrectCount === correct.length) {
+                        parent.querySelectorAll('button').forEach(b => b.disabled = true);
+                    }
+                } else {
+                    parent.querySelectorAll('button').forEach(b => b.disabled = true);
+                }
+            } else {
                 btn.classList.add('wrong');
                 parent.querySelectorAll('button').forEach(b => {
-                    if (b.querySelector('span:first-child').innerText === correct) b.classList.add('correct');
+                    b.disabled = true;
+                    const letter = b.querySelector('span:first-child').innerText;
+                    const bIsCorrect = isMultiAnswer ? correct.includes(letter) : letter === correct;
+                    if (bIsCorrect) b.classList.add('correct');
                 });
             }
         };
 
         function renderCompletion() {
             const list = document.getElementById('complete-list');
+            list.innerHTML = '';
             completion.forEach((text, idx) => {
                 const div = document.createElement('div');
                 div.className = "text-slate-300 text-sm md:text-lg leading-relaxed flex items-start gap-3 bg-slate-900/40 p-4 rounded-xl border border-slate-800";
                 const processed = text.replace(/<b>(.*?)<\/b>/g, (match, p1) => {
-                    const width = Math.max(p1.length * 10, 100);
+                    const width = Math.max(p1.length * 10, 110);
                     return `<input type="text" data-answer="${p1}" style="width: ${width}px" placeholder="..." class="completion-input mx-1 px-2 py-0.5 border-b-2 border-slate-700 focus:outline-none focus:border-blue-500 bg-slate-950/50 rounded text-center font-bold text-blue-400">`;
                 });
                 div.innerHTML = `<span class="font-black text-slate-700 italic text-xl">${(idx + 1).toString().padStart(2, '0')}</span> <div class="mt-1">${processed}</div>`;
@@ -258,9 +277,19 @@
         window.checkCompletion = function() {
             document.querySelectorAll('#complete-list input').forEach(input => {
                 const userVal = input.value.trim().toLowerCase();
-                const correctAns = input.dataset.answer;
-                if (userVal === correctAns.toLowerCase()) input.classList.add('correct');
-                else { input.classList.add('wrong'); input.value = correctAns; }
+                const correctAns = input.dataset.answer.trim().toLowerCase();
+                
+                // Case-insensitive comparison
+                if (userVal === correctAns) {
+                    input.classList.add('correct');
+                    input.classList.remove('border-slate-700');
+                    input.classList.add('border-green-500');
+                } else {
+                    input.classList.add('wrong');
+                    input.classList.remove('border-slate-700');
+                    input.classList.add('border-red-500');
+                    input.value = input.dataset.answer; // Reveal in original case
+                }
                 input.disabled = true;
             });
             const btn = document.getElementById('check-comp-btn');
@@ -269,6 +298,7 @@
 
         function renderTF() {
             const container = document.getElementById('tf-container');
+            container.innerHTML = '';
             trueFalse.forEach((item, idx) => {
                 const div = document.createElement('div');
                 div.className = "glass-card p-4 md:p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4";
